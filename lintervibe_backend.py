@@ -148,7 +148,7 @@ async def analyze_contract(
         )
 
 
-@app.post("/api/analyze-contract", response_model=AnalysisResponse)
+@app.post("/api/analyze-contract") # FIXED
 async def analyze_contract_post(
     address: str = Query(
         ...,

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -139,8 +140,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-text {
@@ -410,12 +416,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
         <header>
             <h1>LinterVibe</h1>
-            <p class="subtitle">Code quality analyzer for GenLayer contracts. Check decorators, detect non-deterministic functions, and ensure deployment-ready code.</p>
+            <p class="subtitle">Code quality analyzer for GenLayer contracts. Check decorators, detect non-deterministic
+                functions, and ensure deployment-ready code.</p>
         </header>
 
         <div class="divider"></div>
@@ -423,12 +431,8 @@
         <!-- Input Section -->
         <section class="input-section">
             <div class="input-group">
-                <input 
-                    type="text" 
-                    id="contractAddress" 
-                    placeholder="0x1234567890123456789012345678901234567890"
-                    autocomplete="off"
-                >
+                <input type="text" id="contractAddress" placeholder="0x1234567890123456789012345678901234567890"
+                    autocomplete="off">
                 <button id="analyzeBtn" onclick="analyzeContract()">Vibe Check Contract</button>
             </div>
         </section>
@@ -485,7 +489,7 @@
         const API_BASE_URL = 'http://localhost:8000';
 
         // Handle Enter key in input field
-        document.getElementById('contractAddress').addEventListener('keypress', function(event) {
+        document.getElementById('contractAddress').addEventListener('keypress', function (event) {
             if (event.key === 'Enter') {
                 analyzeContract();
             }
@@ -583,7 +587,7 @@
 
         function displayContractHeader(address, isValid) {
             const contractHeader = document.getElementById('contractHeader');
-            const badge = isValid 
+            const badge = isValid
                 ? '<div class="badge">✓ Successfully Read from Network</div>'
                 : '<div class="badge error">⚠ Issues Found</div>';
 
@@ -710,5 +714,8 @@
             return text.replace(/[&<>"']/g, m => map[m]);
         }
     </script>
+    <script src="genlayerclient.js"></script>
+    <script src="app.js"></script>
 </body>
+
 </html>
