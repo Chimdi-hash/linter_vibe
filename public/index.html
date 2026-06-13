@@ -518,17 +518,8 @@
             document.getElementById('analyzeBtn').disabled = true;
 
             try {
-                // Make API request with the actual address
-                const response = await fetch(
-                    `${API_BASE_URL}/api/analyze-contract?address=${encodeURIComponent(address)}`
-                );
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Failed to analyze contract');
-                }
-
-                const data = await response.json();
+                // Make RPC request directly to GenLayer smart contract through genLayerClient
+                const data = await window.genLayerClient.analyzeContract(address);
                 displayResults(data);
             } catch (error) {
                 console.error('Error:', error);
