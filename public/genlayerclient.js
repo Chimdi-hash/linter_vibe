@@ -38,7 +38,7 @@ class GenLayerClient {
                 body: JSON.stringify({
                     jsonrpc: '2.0',
                     id: Date.now(),
-                    method: 'gen_callMethod',
+                    method: 'gen_call',
                     params: {
                         from: '0x0000000000000000000000000000000000000000',
                         to: this.registryAddress,
@@ -53,7 +53,7 @@ class GenLayerClient {
             }
 
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error.message || 'Unknown RPC Error');
             }
