@@ -42,10 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error("Wallet error", error);
-                showError("Failed to connect wallet.");
+                showNotification("Failed to connect wallet.");
             }
         } else {
-            showError("No Web3 wallet detected. Please install a compatible EVM wallet.");
+            showNotification("No Web3 wallet detected. Please install a compatible EVM wallet.");
         }
     });
 
@@ -93,22 +93,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const address = contractInput.value.trim();
 
         if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
-            showError("Please enter a valid 40-character 0x-prefixed hex address.");
+            showNotification("Please enter a valid 40-character 0x-prefixed hex address.");
             return;
         }
 
         if (!userAddress) {
-            showError("Please connect your wallet first to authorize the Vibe Check.");
+            showNotification("Please connect your wallet first to authorize the Vibe Check.", 'info');
             return;
         }
         
         if (LINTERVIBE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
-            showError("Developer: Please update LINTERVIBE_CONTRACT_ADDRESS in app.js after deploying the smart contract.");
+            showNotification("Developer: Please update LINTERVIBE_CONTRACT_ADDRESS in app.js after deploying the smart contract.");
             return;
         }
 
         setLoading(true);
-        hideError();
+        hideNotification();
         resultsContainer.style.display = 'none';
 
         try {
@@ -163,18 +163,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.analysis) {
                  renderResults(address, data.analysis, data.source_data);
-                 hideError();
+                 hideNotification();
             } else {
                 throw new Error("Invalid format returned from LinterVibe contract.");
             }
 
         } catch (err) {
             console.error(err);
-            globalErrorText.style.color = '#f56565'; // Error color back
-            showError(err.message || "Execution failed. Check console for details.");
+            showNotification(err.message || "Execution failed. Check console for details.");
         } finally {
             setLoading(false);
-            globalErrorText.style.color = '#f56565';
         }
     }
 
@@ -239,12 +237,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function showError(msg) {
+    function showNotification(msg, type = 'error') {
+        const bg = type === 'error' ? 'var(--error-bg)' : 'rgba(99, 102, 241, 0.1)';
+        const border = type === 'error' ? 'var(--error)' : 'var(--primary)';
+        const color = type === 'error' ? 'var(--error)' : 'var(--primary-light)';
+
+        globalError.style.background = bg;
+        globalError.style.border = `1px solid ${border}`;
+        globalError.style.color = color;
+        globalErrorText.style.color = color;
+        
         globalErrorText.textContent = msg;
         globalError.style.display = 'block';
     }
 
-    function hideError() {
+    function hideNotification() {
         globalError.style.display = 'none';
     }
 
