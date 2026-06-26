@@ -217,6 +217,24 @@ class LinterVibeContract(gl.Contract):
             "source_data": {"source_code": code}
         }
         
+        # Generate a validator remark using LLM consensus
+        def get_llm_context() -> str:
+            snippet = code[:1000] if len(code) > 1000 else code
+            return (
+                f"Contract address: {target_address}\n"
+                f"Is Valid: {analysis_dict['is_valid']}\n"
+                f"Errors: {len(analysis_dict['errors'])}\n"
+                f"Warnings: {len(analysis_dict['warnings'])}\n"
+                f"Code snippet: {snippet}"
+            )
+            
+        llm_remark = gl.eq_principle.prompt_non_comparative(
+            get_llm_context,
+            task="Write a short, engaging 1-sentence 'vibe check' remark (max 15 words) evaluating this smart contract's code quality.",
+            criteria="The result must be a short, engaging remark (max 20 words) about the contract's code quality based on the context."
+        )
+        
+        full_payload["remark"] = llm_remark
         json_result = json.dumps(full_payload)
         
         # Persist to state

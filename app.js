@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = JSON.parse(rawResult);
 
             if (data.analysis) {
-                 renderResults(address, data.analysis, data.source_data);
+                 renderResults(address, data.analysis, data.source_data, data.remark);
                  hideNotification();
             } else {
                 throw new Error("Invalid format returned from LinterVibe contract.");
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderResults(address, analysis, sourceData) {
+    function renderResults(address, analysis, sourceData, remark) {
         document.getElementById('resAddress').textContent = address;
         
         const badge = document.getElementById('resBadge');
@@ -210,6 +210,15 @@ document.addEventListener('DOMContentLoaded', () => {
             warningsSection.style.display = 'block';
         } else {
             warningsSection.style.display = 'none';
+        }
+
+        const remarkSection = document.getElementById('remarkSection');
+        const validatorRemark = document.getElementById('validatorRemark');
+        if (remark) {
+            validatorRemark.textContent = `"${remark}"`;
+            remarkSection.style.display = 'block';
+        } else {
+            remarkSection.style.display = 'none';
         }
 
         const sourceSection = document.getElementById('sourceSection');

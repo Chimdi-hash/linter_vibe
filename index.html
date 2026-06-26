@@ -451,11 +451,19 @@
                 <ul class="list-items" id="errorsList"></ul>
             </div>
 
-            <div class="list-section" id="warningsSection" style="display: none;">
-                <h3 style="color: var(--warning);">💡 Suggestions & Warnings</h3>
-                <ul class="list-items" id="warningsList"></ul>
+            <!-- Warnings Section -->
+            <div id="warningsSection" class="metric-card" style="display: none; border-left-color: var(--warning);">
+                <h3 class="section-title">⚠ Potential Issues</h3>
+                <ul id="warningsList" class="issue-list" style="color: var(--warning);"></ul>
+            </div>
+            
+            <!-- Validator Remark Section -->
+            <div id="remarkSection" class="metric-card" style="display: none; border-left-color: var(--primary);">
+                <h3 class="section-title">🤖 Validator's Vibe Check Remark</h3>
+                <p id="validatorRemark" style="margin-top: 12px; font-style: italic; color: var(--text-secondary);"></p>
             </div>
 
+            <!-- Source Code Snippet -->
             <div class="list-section" id="sourceSection" style="display: none;">
                 <h3>📜 Source Code Snippet</h3>
                 <pre class="code-snippet" id="sourceCode"></pre>
