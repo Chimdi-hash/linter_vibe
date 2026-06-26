@@ -16,13 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('resultsContainer');
 
     let userAddress = null;
+    let originalAddressText = '';
 
     // Wallet Connection Logic
     connectBtn.addEventListener('click', async () => {
         if (userAddress) {
             userAddress = null;
+            originalAddressText = '';
             walletText.textContent = 'Connect Wallet';
             connectBtn.classList.remove('connected');
+            connectBtn.classList.remove('disconnect-hover');
             return;
         }
 
@@ -33,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     userAddress = accounts[0];
                     const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
                     
+                    originalAddressText = shortAddress;
                     walletText.textContent = shortAddress;
                     connectBtn.classList.add('connected');
                     
@@ -49,17 +53,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Hover effect to show "Disconnect"
+    connectBtn.addEventListener('mouseover', () => {
+        if (userAddress) {
+            walletText.textContent = 'Disconnect';
+            connectBtn.classList.add('disconnect-hover');
+        }
+    });
+
+    connectBtn.addEventListener('mouseout', () => {
+        if (userAddress) {
+            walletText.textContent = originalAddressText;
+            connectBtn.classList.remove('disconnect-hover');
+        }
+    });
+
     if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', (accounts) => {
             if (accounts.length > 0) {
                 userAddress = accounts[0];
                 const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                originalAddressText = shortAddress;
                 walletText.textContent = shortAddress;
                 connectBtn.classList.add('connected');
+                connectBtn.classList.remove('disconnect-hover');
             } else {
                 userAddress = null;
+                originalAddressText = '';
                 walletText.textContent = 'Connect Wallet';
                 connectBtn.classList.remove('connected');
+                connectBtn.classList.remove('disconnect-hover');
             }
         });
     }
