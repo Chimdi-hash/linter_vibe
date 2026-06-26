@@ -336,11 +336,46 @@
         }
 
         @media (max-width: 768px) {
-            .grid-cards { grid-template-columns: 1fr; }
-            header { padding: 20px; }
-            .hero h1 { font-size: 36px; }
-            .search-box { flex-direction: column; }
-            .analyze-btn { padding: 16px; }
+            header { 
+                padding: 16px; 
+                flex-direction: column; 
+                gap: 16px; 
+            }
+            .main-container {
+                padding: 30px 16px;
+            }
+            .hero h1 { 
+                font-size: 32px; 
+            }
+            .hero p {
+                font-size: 16px;
+            }
+            .search-box { 
+                flex-direction: column; 
+                border-radius: 12px; 
+                padding: 8px;
+            }
+            .analyze-btn { 
+                padding: 16px; 
+                width: 100%;
+            }
+            .grid-cards { 
+                grid-template-columns: 1fr; 
+                gap: 12px;
+            }
+            .status-card {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+                align-items: center;
+            }
+            .logo-img {
+                width: 32px;
+                height: 32px;
+            }
+            .logo {
+                font-size: 20px;
+            }
         }
     </style>
 </head>
