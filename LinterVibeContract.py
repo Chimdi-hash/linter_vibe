@@ -195,7 +195,7 @@ class LinterVibeContract(gl.Contract):
             return ""
 
         # Fetch using eq_principle to ensure validator consensus on the returned code
-        code = gl.eq_principle.prompt_comparative(fetch_code, "Return the base64-decoded source code exactly.")
+        code = gl.eq_principle.strict_eq(fetch_code)
         
         if not code:
             err_result = json.dumps({
