@@ -167,25 +167,32 @@ class LinterVibeContract(gl.Contract):
         
         # Non-deterministic fetcher function
         def fetch_code() -> str:
-            import urllib.request
             import json
             import base64
             
             url = "https://studio.genlayer.com/api"
-            payload = json.dumps({
+            payload = {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "gen_getContractCode",
                 "params": [target_address]
-            }).encode('utf-8')
+            }
             
-            req = urllib.request.Request(url, data=payload, headers={
-                'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            })
             try:
-                response = urllib.request.urlopen(req, timeout=10).read().decode('utf-8')
-                data = json.loads(response)
+                # Use GenVM's native web request module (sandboxed)
+                response = gl.nondet.web.request(
+                    url, 
+                    method='POST',
+                    headers={
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'Mozilla/5.0'
+                    },
+                    body=json.dumps(payload)
+                )
+                
+                # Depending on the GenVM version, response.body might be bytes or a string
+                body_content = response.body if isinstance(response.body, str) else response.body.decode('utf-8')
+                data = json.loads(body_content)
                 
                 if "result" in data and data["result"]:
                     encoded_code = data["result"]
