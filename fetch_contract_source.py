@@ -36,9 +36,9 @@ def fetch_contract_source(
     if not contract_address.startswith("0x") or len(contract_address) != 42:
         raise ValueError(f"Invalid contract address: {contract_address}")
     
-    # Default to GenLayer public endpoint
+    # Default to GenLayer Studio Network endpoint
     if rpc_endpoint is None:
-        rpc_endpoint = "https://rpc.genLayer.org"
+        rpc_endpoint = "https://studio.genlayer.com/api"
     
     # Try GenLayer custom RPC method first
     try:

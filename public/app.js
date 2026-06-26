@@ -1,98 +1,233 @@
-/**
- * LinterVibe Minimalist UI Controller
- */
 document.addEventListener('DOMContentLoaded', () => {
-    // Select elements from your clean HTML layout
-    const addressInput = document.getElementById('contract-address');
-    const vibeCheckBtn = document.getElementById('vibe-check-btn');
-    const outputSection = document.getElementById('analysis-output');
-    const statusBadge = document.getElementById('status-badge');
+    const connectBtn = document.getElementById('connectWalletBtn');
+    const walletText = document.getElementById('walletAddressText');
+    const contractInput = document.getElementById('contractInput');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const btnText = analyzeBtn.querySelector('.btn-text');
+    const loader = analyzeBtn.querySelector('.loader');
+    const globalError = document.getElementById('globalError');
+    const globalErrorText = document.getElementById('globalErrorText');
+    const resultsContainer = document.getElementById('resultsContainer');
 
-    if (!vibeCheckBtn || !addressInput || !outputSection) {
-        console.error("LinterVibe UI elements missing. Check your HTML element IDs.");
-        return;
-    }
+    let userAddress = null;
 
-    vibeCheckBtn.addEventListener('click', async () => {
-        const address = addressInput.value.trim();
-
-        // 1. Client-side sanity check
-        if (!address) {
-            updateUIError("Please enter a GenLayer contract address.");
-            return;
-        }
-
-        // 2. Set UI into loading state
-        setLoadingState(true);
-
-        try {
-            // 3. Trigger network query execution through the client
-            const data = await window.genLayerClient.analyzeContract(address);
-
-            // 4. Render clean results
-            renderResults(data);
-        } catch (err) {
-            // 5. Catch compile errors or node sync drops cleanly
-            updateUIError(err.message);
-        } finally {
-            setLoadingState(false);
+    // Wallet Connection Logic
+    connectBtn.addEventListener('click', async () => {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                // Request account access
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (accounts.length > 0) {
+                    userAddress = accounts[0];
+                    const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                    
+                    walletText.textContent = shortAddress;
+                    connectBtn.classList.add('connected');
+                    
+                    // Optionally autofill if empty
+                    if (!contractInput.value) {
+                        contractInput.value = userAddress;
+                    }
+                }
+            } catch (error) {
+                console.error("User denied account access or error occurred", error);
+                showError(error.message || "Failed to connect wallet.");
+            }
+        } else {
+            showError("No Web3 wallet detected. Please install MetaMask or a compatible EVM wallet.");
         }
     });
 
-    function setLoadingState(isLoading) {
-        if (isLoading) {
-            vibeCheckBtn.disabled = true;
-            vibeCheckBtn.textContent = "Analyzing bytecode stream...";
-            outputSection.style.opacity = "0.5";
-            if (statusBadge) statusBadge.textContent = "QUERYING NODE...";
+    // Handle account changes
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length > 0) {
+                userAddress = accounts[0];
+                const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                walletText.textContent = shortAddress;
+                connectBtn.classList.add('connected');
+            } else {
+                userAddress = null;
+                walletText.textContent = 'Connect Wallet';
+                connectBtn.classList.remove('connected');
+            }
+        });
+    }
+
+    // Analysis Logic
+    contractInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performAnalysis();
+    });
+
+    analyzeBtn.addEventListener('click', performAnalysis);
+
+    async function performAnalysis() {
+        const address = contractInput.value.trim();
+
+        if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+            showError("Please enter a valid 40-character 0x-prefixed hex address.");
+            return;
+        }
+
+        setLoading(true);
+        hideError();
+        resultsContainer.style.display = 'none';
+
+        try {
+            // Call the robust Python backend which fetches from GenLayer Studio Network
+            const response = await fetch(`/api/analyze-contract?address=${address}`);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || data.message || `HTTP Error ${response.status}`);
+            }
+
+            // The backend uses api_server.py which returns FullAnalysisResponse structure:
+            // { analysis: { is_valid, errors, warnings, info: { functions, decorators, imports, forbidden_calls } }, source_data: { source_code } }
+            // Note: If using lintervibe_backend.py, it's slightly different. We configured vercel.json to use api/index.py mapping to api_server.py.
+            
+            if (data.analysis) {
+                 renderResults(address, data.analysis, data.source_data);
+            } else if (data.status) {
+                // Fallback if backend returned AnalysisResponse from lintervibe_backend.py
+                renderResultsSimple(address, data);
+            }
+
+        } catch (err) {
+            console.error(err);
+            showError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function renderResults(address, analysis, sourceData) {
+        document.getElementById('resAddress').textContent = address;
+        
+        const badge = document.getElementById('resBadge');
+        if (analysis.is_valid) {
+            badge.textContent = '● Deterministic & Valid';
+            badge.className = 'status-badge status-valid';
         } else {
-            vibeCheckBtn.disabled = false;
-            vibeCheckBtn.textContent = "Vibe Check Contract";
-            outputSection.style.opacity = "1";
+            badge.textContent = '⚠ Structural Issues Detected';
+            badge.className = 'status-badge status-invalid';
+        }
+
+        document.getElementById('metricErrors').textContent = analysis.errors.length;
+        document.getElementById('metricWarnings').textContent = analysis.warnings.length;
+        
+        const functionCount = analysis.info && analysis.info.functions ? analysis.info.functions.length : 0;
+        document.getElementById('metricFunctions').textContent = functionCount;
+
+        // Errors
+        const errorsSection = document.getElementById('errorsSection');
+        const errorsList = document.getElementById('errorsList');
+        if (analysis.errors.length > 0) {
+            errorsList.innerHTML = analysis.errors.map(err => `<li class="err-item">${escapeHtml(err)}</li>`).join('');
+            errorsSection.style.display = 'block';
+        } else {
+            errorsSection.style.display = 'none';
+        }
+
+        // Warnings
+        const warningsSection = document.getElementById('warningsSection');
+        const warningsList = document.getElementById('warningsList');
+        if (analysis.warnings.length > 0) {
+            warningsList.innerHTML = analysis.warnings.map(warn => `<li class="warn-item">${escapeHtml(warn)}</li>`).join('');
+            warningsSection.style.display = 'block';
+        } else {
+            warningsSection.style.display = 'none';
+        }
+
+        // Source snippet
+        const sourceSection = document.getElementById('sourceSection');
+        const sourceCode = document.getElementById('sourceCode');
+        if (sourceData && sourceData.source_code) {
+            const snippet = sourceData.source_code.substring(0, 1500) + (sourceData.source_code.length > 1500 ? '\n\n...[truncated]' : '');
+            sourceCode.textContent = snippet;
+            sourceSection.style.display = 'block';
+        } else {
+            sourceSection.style.display = 'none';
+        }
+
+        resultsContainer.style.display = 'block';
+    }
+
+    function renderResultsSimple(address, data) {
+        document.getElementById('resAddress').textContent = address;
+        
+        const badge = document.getElementById('resBadge');
+        if (data.status === 'success' && data.errors.length === 0) {
+            badge.textContent = '● Deterministic & Valid';
+            badge.className = 'status-badge status-valid';
+        } else {
+            badge.textContent = '⚠ Structural Issues Detected';
+            badge.className = 'status-badge status-invalid';
+        }
+
+        document.getElementById('metricErrors').textContent = data.errors ? data.errors.length : 0;
+        document.getElementById('metricWarnings').textContent = data.warnings ? data.warnings.length : 0;
+        document.getElementById('metricFunctions').textContent = '-';
+
+        // Errors
+        const errorsSection = document.getElementById('errorsSection');
+        const errorsList = document.getElementById('errorsList');
+        if (data.errors && data.errors.length > 0) {
+            errorsList.innerHTML = data.errors.map(err => `<li class="err-item">${escapeHtml(err)}</li>`).join('');
+            errorsSection.style.display = 'block';
+        } else {
+            errorsSection.style.display = 'none';
+        }
+
+        // Warnings
+        const warningsSection = document.getElementById('warningsSection');
+        const warningsList = document.getElementById('warningsList');
+        if (data.warnings && data.warnings.length > 0) {
+            warningsList.innerHTML = data.warnings.map(warn => `<li class="warn-item">${escapeHtml(warn)}</li>`).join('');
+            warningsSection.style.display = 'block';
+        } else {
+            warningsSection.style.display = 'none';
+        }
+
+        // Source snippet
+        const sourceSection = document.getElementById('sourceSection');
+        const sourceCode = document.getElementById('sourceCode');
+        if (data.raw_code_snippet) {
+            sourceCode.textContent = data.raw_code_snippet;
+            sourceSection.style.display = 'block';
+        } else {
+            sourceSection.style.display = 'none';
+        }
+
+        resultsContainer.style.display = 'block';
+    }
+
+    function setLoading(isLoading) {
+        if (isLoading) {
+            analyzeBtn.disabled = true;
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+        } else {
+            analyzeBtn.disabled = false;
+            btnText.style.display = 'block';
+            loader.style.display = 'none';
         }
     }
 
-    function renderResults(data) {
-        // Clear previous runs
-        outputSection.innerHTML = '';
-
-        if (statusBadge) {
-            statusBadge.textContent = data.is_deterministic ? "PASSED" : "NON-DETERMINISTIC WARNING";
-            statusBadge.className = data.is_deterministic ? "badge-success" : "badge-warning";
-        }
-
-        // Beautifully append contract data metadata blocks
-        const layout = `
-            <div class="result-card">
-                <h3>📜 Deployed Source Code Stream</h3>
-                <pre><code>${escapeHtml(data.source_code || '# No code returned')}</code></pre>
-            </div>
-            <div class="result-card lint-report">
-                <h3>🔍 Linter Validation Results</h3>
-                <p><strong>Status:</strong> ${data.is_deterministic ? '🟢 Valid Deterministic Layout' : '🔴 Issues Detected'}</p>
-                <ul>
-                    ${data.logs.map(log => `<li>⚠️ ${escapeHtml(log)}</li>`).join('') || '<li>✅ Perfect score! No forbidden imports or state structural anomalies found.</li>'}
-                </ul>
-            </div>
-        `;
-        outputSection.innerHTML = layout;
+    function showError(msg) {
+        globalErrorText.textContent = msg;
+        globalError.style.display = 'block';
     }
 
-    function updateUIError(errorMessage) {
-        outputSection.innerHTML = `
-            <div class="error-card" style="border: 1px solid #ff3333; color: #ff3333; padding: 15px; margin-top: 15px;">
-                <strong>Compilation / Query Error:</strong>
-                <p>${escapeHtml(errorMessage)}</p>
-            </div>
-        `;
-        if (statusBadge) {
-            statusBadge.textContent = "FAILED";
-            statusBadge.className = "badge-danger";
-        }
+    function hideError() {
+        globalError.style.display = 'none';
     }
 
     function escapeHtml(str) {
-        return str.replace(/&/g, "&amp;")
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
