@@ -13,6 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Wallet Connection Logic
     connectBtn.addEventListener('click', async () => {
+        if (userAddress) {
+            // Disconnect user locally
+            userAddress = null;
+            walletText.textContent = 'Connect Wallet';
+            connectBtn.classList.remove('connected');
+            return;
+        }
+
         if (typeof window.ethereum !== 'undefined') {
             try {
                 // Request account access
@@ -73,6 +81,26 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(true);
         hideError();
         resultsContainer.style.display = 'none';
+
+        if (!userAddress) {
+            showError("Please connect your wallet first to authorize the Vibe Check.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Request personal signature authorization
+            const message = `Authorize LinterVibe to run a deterministic structural analysis on GenLayer StudioNet contract:\n\n${address}`;
+            await window.ethereum.request({
+                method: 'personal_sign',
+                params: [message, userAddress]
+            });
+        } catch (signError) {
+            console.error("Signature denied", signError);
+            showError("You must sign the authorization message to proceed with the analysis.");
+            setLoading(false);
+            return;
+        }
 
         try {
             // Call the robust Python backend which fetches from GenLayer Studio Network

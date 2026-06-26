@@ -73,14 +73,14 @@ def _fetch_via_genlayer_rpc(
 ) -> Optional[Dict[str, Any]]:
     """
     Attempt to fetch contract source via GenLayer's custom RPC method.
-    GenLayer may provide a custom 'gen_getContractSource' method.
+    GenLayer uses 'gen_getContractCode' which returns base64 encoded source.
     """
     headers = {"Content-Type": "application/json"}
     
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
-        "method": "gen_getContractSource",
+        "method": "gen_getContractCode",
         "params": [contract_address]
     }
     
@@ -100,12 +100,20 @@ def _fetch_via_genlayer_rpc(
             return None
         
         if "result" in data and data["result"]:
+            import base64
+            encoded_code = data["result"]
+            try:
+                decoded_code = base64.b64decode(encoded_code).decode('utf-8')
+            except Exception as decode_err:
+                print(f"Failed to decode base64 contract code: {decode_err}")
+                decoded_code = encoded_code # Fallback to raw if not actually base64
+                
             return {
-                "source_code": data["result"].get("source_code", ""),
-                "compiler_version": data["result"].get("compiler_version", ""),
-                "contract_name": data["result"].get("contract_name", ""),
-                "abi": data["result"].get("abi", []),
-                "method": "gen_getContractSource"
+                "source_code": decoded_code,
+                "compiler_version": "genvm",
+                "contract_name": f"Contract_{contract_address[:8]}",
+                "abi": [],
+                "method": "gen_getContractCode"
             }
     
     except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
@@ -239,7 +247,7 @@ if __name__ == "__main__":
     # Try with default GenLayer endpoint
     result = fetch_contract_source(
         contract_address,
-        rpc_endpoint="https://rpc.genLayer.org"
+        rpc_endpoint="https://studio.genlayer.com/api"
     )
     
     print("Contract Source Code Fetch Result:")
@@ -248,7 +256,7 @@ if __name__ == "__main__":
     # Example with local emulator fallback
     result_with_fallback = fetch_contract_source(
         contract_address,
-        rpc_endpoint="https://rpc.genLayer.org",
+        rpc_endpoint="https://studio.genlayer.com/api",
         local_emulator_url="http://localhost:8545"
     )
     
