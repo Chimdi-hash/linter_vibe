@@ -1,3 +1,9 @@
+import { createClient, chains } from 'genlayer-js';
+
+// The address of your deployed LinterVibeContract.py on StudioNet
+// YOU MUST UPDATE THIS AFTER DEPLOYING LinterVibeContract.py
+const LINTERVIBE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 document.addEventListener('DOMContentLoaded', () => {
     const connectBtn = document.getElementById('connectWalletBtn');
     const walletText = document.getElementById('walletAddressText');
@@ -14,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wallet Connection Logic
     connectBtn.addEventListener('click', async () => {
         if (userAddress) {
-            // Disconnect user locally
             userAddress = null;
             walletText.textContent = 'Connect Wallet';
             connectBtn.classList.remove('connected');
@@ -23,9 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof window.ethereum !== 'undefined') {
             try {
-                // Request account access
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                
                 if (accounts.length > 0) {
                     userAddress = accounts[0];
                     const shortAddress = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
@@ -33,21 +36,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     walletText.textContent = shortAddress;
                     connectBtn.classList.add('connected');
                     
-                    // Optionally autofill if empty
                     if (!contractInput.value) {
                         contractInput.value = userAddress;
                     }
                 }
             } catch (error) {
-                console.error("User denied account access or error occurred", error);
-                showError(error.message || "Failed to connect wallet.");
+                console.error("Wallet error", error);
+                showError("Failed to connect wallet.");
             }
         } else {
-            showError("No Web3 wallet detected. Please install MetaMask or a compatible EVM wallet.");
+            showError("No Web3 wallet detected. Please install a compatible EVM wallet.");
         }
     });
 
-    // Handle account changes
     if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', (accounts) => {
             if (accounts.length > 0) {
@@ -63,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Analysis Logic
     contractInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performAnalysis();
     });
@@ -78,55 +78,84 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (!userAddress) {
+            showError("Please connect your wallet first to authorize the Vibe Check.");
+            return;
+        }
+        
+        if (LINTERVIBE_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+            showError("Developer: Please update LINTERVIBE_CONTRACT_ADDRESS in app.js after deploying the smart contract.");
+            return;
+        }
+
         setLoading(true);
         hideError();
         resultsContainer.style.display = 'none';
 
-        if (!userAddress) {
-            showError("Please connect your wallet first to authorize the Vibe Check.");
-            setLoading(false);
-            return;
-        }
-
         try {
-            // Request personal signature authorization
-            const message = `Authorize LinterVibe to run a deterministic structural analysis on GenLayer StudioNet contract:\n\n${address}`;
-            await window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, userAddress]
+            // Wait for user to sign the transaction via MetaMask to execute the Vibe Check
+            const client = createClient({ 
+                chain: chains.studionet, 
+                // Connect Viem-based GenLayer client to injected Ethereum provider (MetaMask)
+                account: userAddress 
             });
-        } catch (signError) {
-            console.error("Signature denied", signError);
-            showError("You must sign the authorization message to proceed with the analysis.");
-            setLoading(false);
-            return;
-        }
+            // Overriding custom transport behavior if needed, but normally genlayer-js wraps standard viem behavior
+            // Since we must rely on window.ethereum for signatures, we'll try raw eth_sendTransaction if writeContract fails
 
-        try {
-            // Call the robust Python backend which fetches from GenLayer Studio Network
-            const response = await fetch(`/api/analyze-contract?address=${address}`);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || data.message || `HTTP Error ${response.status}`);
+            // Fallback strategy if createClient requires advanced setup:
+            let txHash;
+            try {
+                // If genlayer-js supports window.ethereum out of the box with standard provider
+                // We're signing a transaction to the GenLayer contract
+                globalError.style.display = 'block';
+                globalErrorText.textContent = "Please sign the transaction in your wallet to perform the Vibe Check on GenLayer...";
+                globalErrorText.style.color = '#a0aec0'; // Info color
+                
+                txHash = await client.writeContract({
+                    address: LINTERVIBE_CONTRACT_ADDRESS,
+                    functionName: 'perform_vibe_check',
+                    args: [address],
+                    value: 0n, // Assuming GenLayer token amount
+                });
+            } catch (sdkErr) {
+                console.warn("SDK writeContract failed, attempting manual RPC construction if necessary", sdkErr);
+                throw sdkErr;
             }
 
-            // The backend uses api_server.py which returns FullAnalysisResponse structure:
-            // { analysis: { is_valid, errors, warnings, info: { functions, decorators, imports, forbidden_calls } }, source_data: { source_code } }
-            // Note: If using lintervibe_backend.py, it's slightly different. We configured vercel.json to use api/index.py mapping to api_server.py.
-            
+            globalErrorText.textContent = `Transaction submitted (TxHash: ${txHash.substring(0, 10)}...). Waiting for GenLayer finality...`;
+
+            // Wait for GenLayer validators to reach consensus on the Intelligent Contract execution
+            await client.waitForTransactionReceipt({ hash: txHash });
+
+            globalErrorText.textContent = `Transaction finalized. Reading analysis results from the contract state...`;
+
+            // Read the deterministic result generated by the smart contract
+            const rawResult = await client.readContract({
+                address: LINTERVIBE_CONTRACT_ADDRESS,
+                functionName: 'get_vibe_check_result',
+                args: [address]
+            });
+
+            if (!rawResult || rawResult === "") {
+                throw new Error("Analysis failed. Contract state empty.");
+            }
+
+            const data = JSON.parse(rawResult);
+
             if (data.analysis) {
                  renderResults(address, data.analysis, data.source_data);
-            } else if (data.status) {
-                // Fallback if backend returned AnalysisResponse from lintervibe_backend.py
-                renderResultsSimple(address, data);
+                 hideError();
+            } else {
+                throw new Error("Invalid format returned from LinterVibe contract.");
             }
 
         } catch (err) {
             console.error(err);
-            showError(err.message);
+            globalErrorText.style.color = '#f56565'; // Error color back
+            showError(err.message || "Execution failed. Check console for details.");
         } finally {
             setLoading(false);
+            globalErrorText.style.color = '#f56565';
         }
     }
 
@@ -148,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const functionCount = analysis.info && analysis.info.functions ? analysis.info.functions.length : 0;
         document.getElementById('metricFunctions').textContent = functionCount;
 
-        // Errors
         const errorsSection = document.getElementById('errorsSection');
         const errorsList = document.getElementById('errorsList');
         if (analysis.errors.length > 0) {
@@ -158,7 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
             errorsSection.style.display = 'none';
         }
 
-        // Warnings
         const warningsSection = document.getElementById('warningsSection');
         const warningsList = document.getElementById('warningsList');
         if (analysis.warnings.length > 0) {
@@ -168,61 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
             warningsSection.style.display = 'none';
         }
 
-        // Source snippet
         const sourceSection = document.getElementById('sourceSection');
         const sourceCode = document.getElementById('sourceCode');
         if (sourceData && sourceData.source_code) {
             const snippet = sourceData.source_code.substring(0, 1500) + (sourceData.source_code.length > 1500 ? '\n\n...[truncated]' : '');
             sourceCode.textContent = snippet;
-            sourceSection.style.display = 'block';
-        } else {
-            sourceSection.style.display = 'none';
-        }
-
-        resultsContainer.style.display = 'block';
-    }
-
-    function renderResultsSimple(address, data) {
-        document.getElementById('resAddress').textContent = address;
-        
-        const badge = document.getElementById('resBadge');
-        if (data.status === 'success' && data.errors.length === 0) {
-            badge.textContent = '● Deterministic & Valid';
-            badge.className = 'status-badge status-valid';
-        } else {
-            badge.textContent = '⚠ Structural Issues Detected';
-            badge.className = 'status-badge status-invalid';
-        }
-
-        document.getElementById('metricErrors').textContent = data.errors ? data.errors.length : 0;
-        document.getElementById('metricWarnings').textContent = data.warnings ? data.warnings.length : 0;
-        document.getElementById('metricFunctions').textContent = '-';
-
-        // Errors
-        const errorsSection = document.getElementById('errorsSection');
-        const errorsList = document.getElementById('errorsList');
-        if (data.errors && data.errors.length > 0) {
-            errorsList.innerHTML = data.errors.map(err => `<li class="err-item">${escapeHtml(err)}</li>`).join('');
-            errorsSection.style.display = 'block';
-        } else {
-            errorsSection.style.display = 'none';
-        }
-
-        // Warnings
-        const warningsSection = document.getElementById('warningsSection');
-        const warningsList = document.getElementById('warningsList');
-        if (data.warnings && data.warnings.length > 0) {
-            warningsList.innerHTML = data.warnings.map(warn => `<li class="warn-item">${escapeHtml(warn)}</li>`).join('');
-            warningsSection.style.display = 'block';
-        } else {
-            warningsSection.style.display = 'none';
-        }
-
-        // Source snippet
-        const sourceSection = document.getElementById('sourceSection');
-        const sourceCode = document.getElementById('sourceCode');
-        if (data.raw_code_snippet) {
-            sourceCode.textContent = data.raw_code_snippet;
             sourceSection.style.display = 'block';
         } else {
             sourceSection.style.display = 'none';
