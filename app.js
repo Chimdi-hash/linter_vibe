@@ -144,7 +144,13 @@ document.addEventListener('DOMContentLoaded', () => {
             globalErrorText.textContent = `Transaction submitted (TxHash: ${txHash.substring(0, 10)}...). Waiting for GenLayer finality...`;
 
             // Wait for GenLayer validators to reach consensus on the Intelligent Contract execution
-            await client.waitForTransactionReceipt({ hash: txHash });
+            // We increase the timeout to 120 seconds because LLM consensus can sometimes take longer,
+            // especially if multiple transactions are submitted in close succession.
+            await client.waitForTransactionReceipt({ 
+                hash: txHash,
+                status: 'ACCEPTED',
+                timeout: 120000 
+            });
 
             globalErrorText.textContent = `Transaction finalized. Reading analysis results from the contract state...`;
 
