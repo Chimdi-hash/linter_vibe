@@ -112,6 +112,35 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsContainer.style.display = 'none';
 
         try {
+            // First ensure the wallet is on the correct GenLayer Studio Network (0xf22f)
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0xf22f' }],
+                });
+            } catch (switchError) {
+                // This error code indicates that the chain has not been added to MetaMask.
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [
+                            {
+                                chainId: '0xf22f',
+                                chainName: 'GenLayer Studio Network',
+                                nativeCurrency: {
+                                    name: 'GEN',
+                                    symbol: 'GEN',
+                                    decimals: 18,
+                                },
+                                rpcUrls: ['https://studio.genlayer.com/api'],
+                            },
+                        ],
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+
             // Wait for user to sign the transaction via MetaMask to execute the Vibe Check
             const client = createClient({ 
                 chain: chains.studionet, 
