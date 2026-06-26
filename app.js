@@ -39,10 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     originalAddressText = shortAddress;
                     walletText.textContent = shortAddress;
                     connectBtn.classList.add('connected');
-                    
-                    if (!contractInput.value) {
-                        contractInput.value = userAddress;
-                    }
                 }
             } catch (error) {
                 console.error("Wallet error", error);
