@@ -199,11 +199,14 @@ class LinterVibeContract(gl.Contract):
         
         if not code:
             err_result = json.dumps({
-                "is_valid": False,
-                "errors": [f"Failed to fetch contract code for {target_address} from GenLayer RPC."],
-                "warnings": [],
-                "info": {"functions": [], "decorators": [], "imports": [], "forbidden_calls": []},
-                "source_data": {"source_code": ""}
+                "analysis": {
+                    "is_valid": False,
+                    "errors": [f"Failed to fetch contract code for {target_address} from GenLayer RPC."],
+                    "warnings": [],
+                    "info": {"functions": [], "decorators": [], "imports": [], "forbidden_calls": []}
+                },
+                "source_data": {"source_code": ""},
+                "remark": "Target contract could not be analyzed due to fetch failure."
             })
             self.analyses[target_address] = err_result
             return err_result
