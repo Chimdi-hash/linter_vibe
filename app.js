@@ -2,7 +2,7 @@ import { createClient, chains } from 'genlayer-js';
 
 // The address of your deployed LinterVibeContract.py on StudioNet
 // YOU MUST UPDATE THIS AFTER DEPLOYING LinterVibeContract.py
-const LINTERVIBE_CONTRACT_ADDRESS = "0x47cEf98E959697eF5E0c07F992E05BcE09356d6F";
+const LINTERVIBE_CONTRACT_ADDRESS = "0x9b0A2D6dCEB32FCC5ba8921289146A8D587CD6C1";
 
 document.addEventListener('DOMContentLoaded', () => {
     const connectBtn = document.getElementById('connectWalletBtn');
