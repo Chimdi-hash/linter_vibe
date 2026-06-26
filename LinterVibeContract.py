@@ -179,7 +179,10 @@ class LinterVibeContract(gl.Contract):
                 "params": [target_address]
             }).encode('utf-8')
             
-            req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+            req = urllib.request.Request(url, data=payload, headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            })
             try:
                 response = urllib.request.urlopen(req, timeout=10).read().decode('utf-8')
                 data = json.loads(response)
