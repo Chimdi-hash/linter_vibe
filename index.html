@@ -74,14 +74,12 @@
             gap: 12px;
         }
 
-        .logo-icon {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--accent-primary), #a855f7);
+        .logo-img {
+            width: 40px;
+            height: 40px;
             border-radius: 8px;
-            display: grid;
-            place-items: center;
-            font-size: 18px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
         }
 
         .connect-btn {
@@ -350,7 +348,7 @@
 
     <header>
         <div class="logo">
-            <div class="logo-icon">⚡</div>
+            <img src="/logo.png" alt="LinterVibe Logo" class="logo-img" />
             LinterVibe
         </div>
         <button class="connect-btn" id="connectWalletBtn">
